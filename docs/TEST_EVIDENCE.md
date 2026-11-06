@@ -4,7 +4,16 @@
 **When:** 2026-11-06 on Windows  
 **Result:** 7 files passed, **55 passed, 6 skipped**, exit code 0.
 
-GitHub Actions push run `42212102145` then failed Windows on a temp path containing `~` (`RUNNER~1`). Argument policy was updated to allow `~` in non-shell argv. Re-run is required before treating Windows CI as green.
+The first push CI run `42212102145` failed Windows because the temp path contained `~` (`RUNNER~1`). After allowing `~` in non-shell arguments, push run `42212460197` completed with success on 2026-11-06:
+
+- https://github.com/Kozphy/cursor-mcp-installer/actions/runs/42212460197
+- ubuntu-latest: https://github.com/Kozphy/cursor-mcp-installer/actions/runs/42212460197/job/127874187853
+- windows-latest: https://github.com/Kozphy/cursor-mcp-installer/actions/runs/42212460197/job/127874187722
+- macos-latest: https://github.com/Kozphy/cursor-mcp-installer/actions/runs/42212460197/job/127874187376
+- network integration: https://github.com/Kozphy/cursor-mcp-installer/actions/runs/42212460197/job/127874187588
+- dependency and secret scan: https://github.com/Kozphy/cursor-mcp-installer/actions/runs/42212460197/job/127874187766
+
+The scan job records `npm audit` and does not fail the build. Audit findings remain open.
 
 Skipped tests call the npm registry or `npx` and run only when `RUN_NETWORK_TESTS=1`. They were not executed in this session.
 

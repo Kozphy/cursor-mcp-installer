@@ -9,13 +9,12 @@
 - Install of the same revision is idempotent.
 - Uninstall does not delete a checksum mismatch.
 - `tsc --noEmit` and `vitest run` passed locally (55 passed, 6 network tests skipped).
-- CI workflow is present for Ubuntu, Windows, and macOS. It has not run yet.
+- CI run `42212460197` passed on Ubuntu, Windows, and macOS, including the network integration job. See `docs/TEST_EVIDENCE.md`.
 
 ## Blocking
 
 - `npm audit` reported 18 vulnerabilities (10 high, 3 critical) in the existing tree, including `@modelcontextprotocol/sdk`, `vitest`, and `vite`. No release exception was accepted.
-- Cross-platform CI has no completed run URLs.
-- Network integration tests were not run.
+- Cross-platform CI passed once after the Windows short-path fix. That does not clear the audit findings below.
 - Plugin `--write-mcp` does not update client MCP configuration.
 - Remote plugin fetch is fail-closed without `--approve-remote` and was not integration-tested.
 - Package metadata still points at `matthewdcage/cursor-mcp-installer`; publishing from the fork was not authorized and was not done.
