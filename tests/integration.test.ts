@@ -23,7 +23,7 @@ describe('End-to-End: Install and Validate server-memory', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('resolves, writes config, and validates server-memory', async () => {
+  it.skipIf(!process.env.RUN_NETWORK_TESTS)('resolves, writes config, and validates server-memory', async () => {
     const entry = await resolveNpmPackage('@modelcontextprotocol/server-memory');
     expect(entry.command).toBe('npx');
     expect(entry.type).toBe('stdio');

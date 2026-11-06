@@ -1,0 +1,13 @@
+{
+  "name": "fixture-marketplace",
+  "owner": { "name": "Kozphy Fixture" },
+  "metadata": { "description": "Offline test marketplace" },
+  "plugins": [
+    { "name": "skills-only", "source": "skills-only", "description": "Skills component only" },
+    { "name": "rules-commands", "source": "rules-commands", "description": "Rules and commands" },
+    { "name": "mcp-demo", "source": "mcp-demo", "description": "Inline MCP server config" },
+    { "name": "hooked", "source": "hooked", "description": "Requires hook approval" },
+    { "name": "needs-var", "source": "needs-var", "description": "Requires a variable" },
+    { "name": "future-cursor", "source": "future-cursor", "description": "Requires a newer Cursor" }
+  ]
+}

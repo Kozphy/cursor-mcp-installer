@@ -159,7 +159,7 @@ This opens web interface in your browser at `http://localhost:3939`:
 | **Cursor** | `~/.cursor/mcp.json` | `%USERPROFILE%\.cursor\mcp.json` | `~/.cursor/mcp.json` |
 | **VS Code** | `.vscode/mcp.json` (workspace) | `.vscode/mcp.json` (workspace) | `.vscode/mcp.json` (workspace) |
 | **OpenClaw** | `~/.openclaw/openclaw.json` | - | `~/.openclaw/openclaw.json` |
-| **Claude Code** | `.mcp.json` (project root) | `.mcp.json` (project root) | `.mcp.json` (project root) |
+| **Claude Code** | `~/.claude.json` (user scope) | `.mcp.json` (project root) | `~/.claude.json` |
 
 ## Features
 

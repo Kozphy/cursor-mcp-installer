@@ -35,6 +35,21 @@
 ### User `~/.claude.json`
 ```json
 {
+  "mcpServers": {
+    "server-name": {
+      "command": "npx",
+      "args": ["-y", "package-name"]
+    }
+  }
+}
+```
+
+User-scope servers use the top-level `mcpServers` key and apply across all projects.
+
+Local-scope (per-project, private) servers live under `projects.<path>.mcpServers` in the same file:
+
+```json
+{
   "projects": {
     "/path/to/project": {
       "mcpServers": {
@@ -84,7 +99,8 @@ claude mcp add --scope project <name> -- npx -y <package>  # Project scope
 - Has CLI for managing servers (`claude mcp add/remove/list`)
 - Can import from Claude Desktop config
 - Enterprise managed configs for organizations
-- Project-level `.mcp.json` at repo root (different from Cursor's `.cursor/mcp.json`)
+- User-scope config is `~/.claude.json` (top-level `mcpServers`); project-scope is `.mcp.json` at repo root
+- This installer writes **user-scope** servers to `~/.claude.json`
 
 ## Important Notes
 

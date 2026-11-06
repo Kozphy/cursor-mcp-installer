@@ -1,8 +1,5 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { log } from '../utils/logging.js';
-
-const execFileAsync = promisify(execFile);
+import { execNoShell } from '../security/process.js';
 
 export interface RuntimeInfo {
   name: string;
@@ -22,7 +19,7 @@ export interface RuntimesReport {
 
 async function probeRuntime(name: string, args: string[] = ['--version']): Promise<RuntimeInfo> {
   try {
-    const { stdout } = await execFileAsync(name, args, { timeout: 5000 });
+    const { stdout } = await execNoShell(name, args, { timeout: 5000 });
     const version = stdout.trim().replace(/^v/, '');
     log.debug(`Detected ${name}`, { version });
     return { name, available: true, version, path: name };

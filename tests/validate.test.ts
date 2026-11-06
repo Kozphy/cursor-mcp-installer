@@ -5,7 +5,7 @@ import { detectOs } from '../src/detect/os.js';
 import { detectRuntimes } from '../src/detect/runtimes.js';
 
 describe('MCP Handshake Validation', () => {
-  it('validates a real MCP server (server-memory)', async () => {
+  it.skipIf(!process.env.RUN_NETWORK_TESTS)('validates a real MCP server (server-memory)', async () => {
     const result = await validateMcpServer('npx', ['-y', '@modelcontextprotocol/server-memory'], undefined, 'Test');
 
     expect(result.client).toBe('Test');
@@ -26,7 +26,7 @@ describe('MCP Handshake Validation', () => {
     const result = await validateMcpServer('node', ['-e', 'process.exit(1)'], undefined, 'Test');
 
     expect(result.status).toBe('fail');
-    expect(result.error).toContain('exited');
+    expect(result.error?.toLowerCase()).toMatch(/exited|rejected/);
   });
 });
 

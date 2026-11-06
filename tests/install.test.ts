@@ -4,17 +4,17 @@ import { resolveUvxPackage } from '../src/install/uvx.js';
 import { isGitUrl } from '../src/install/git.js';
 
 describe('npm Install', () => {
-  it('isNpmPackage returns true for real package', async () => {
+  it.skipIf(!process.env.RUN_NETWORK_TESTS)('isNpmPackage returns true for real package', async () => {
     const result = await isNpmPackage('@modelcontextprotocol/server-memory');
     expect(result).toBe(true);
   });
 
-  it('isNpmPackage returns false for nonexistent package', async () => {
+  it.skipIf(!process.env.RUN_NETWORK_TESTS)('isNpmPackage returns false for nonexistent package', async () => {
     const result = await isNpmPackage('definitely-not-a-real-package-xyzzy-12345');
     expect(result).toBe(false);
   });
 
-  it('resolveNpmPackage returns valid entry', async () => {
+  it.skipIf(!process.env.RUN_NETWORK_TESTS)('resolveNpmPackage returns valid entry', async () => {
     const entry = await resolveNpmPackage('@modelcontextprotocol/server-memory');
     expect(entry.command).toBe('npx');
     expect(entry.args).toContain('-y');
@@ -22,7 +22,7 @@ describe('npm Install', () => {
     expect(entry.type).toBe('stdio');
   });
 
-  it('resolveNpmPackage throws for nonexistent package', async () => {
+  it.skipIf(!process.env.RUN_NETWORK_TESTS)('resolveNpmPackage throws for nonexistent package', async () => {
     await expect(resolveNpmPackage('definitely-not-a-real-package-xyzzy-12345'))
       .rejects.toThrow();
   });

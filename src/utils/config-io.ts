@@ -42,8 +42,9 @@ export function writeJsonFile(filePath: string, data: Record<string, unknown>): 
   const content = JSON.stringify(data, null, 2) + '\n';
 
   try {
-    fs.writeFileSync(tempPath, content, 'utf-8');
+    fs.writeFileSync(tempPath, content, { encoding: 'utf-8', mode: 0o600 });
     fs.renameSync(tempPath, filePath);
+    try { fs.chmodSync(filePath, 0o600); } catch { /* Windows ACLs differ */ }
     log.info('Wrote config file', { path: filePath });
   } catch (err) {
     try { fs.unlinkSync(tempPath); } catch { /* ignore cleanup failure */ }

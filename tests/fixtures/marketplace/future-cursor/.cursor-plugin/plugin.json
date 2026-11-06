@@ -1,0 +1,6 @@
+{
+  "name": "future-cursor",
+  "version": "1.0.0",
+  "minClientVersions": { "cursor": "99.0.0" },
+  "skills": "./skills"
+}

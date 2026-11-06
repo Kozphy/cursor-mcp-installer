@@ -1,0 +1,6 @@
+{
+  "name": "rules-commands",
+  "version": "1.0.0",
+  "commands": "./commands",
+  "rules": ["./rules/example.mdc"]
+}

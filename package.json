@@ -25,6 +25,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "zod": "^3.25.0"
   },
   "devDependencies": {
@@ -53,7 +55,8 @@
   "files": [
     "lib/**/*",
     "dashboard/dist/**/*",
-    "docs/**/*"
+    "docs/**/*",
+    "vendor/cursor-plugins/**/*"
   ],
   "publishConfig": {
     "access": "public"
