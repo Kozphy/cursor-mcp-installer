@@ -55,6 +55,11 @@ async function main() {
     return;
   }
 
+  if (command === 'plugin') {
+    await runPlugin(args.slice(1));
+    return;
+  }
+
   cliPrint(`Unknown command: ${command}. Run with --help for usage.`);
   process.exit(1);
 }
@@ -67,6 +72,7 @@ Usage:
   universal-mcp-installer detect                    Detect system, runtimes, and AI clients
   universal-mcp-installer install <package> [opts]   Install an MCP server to detected clients
   universal-mcp-installer validate <command> [args]  Validate an MCP server via handshake
+  universal-mcp-installer plugin <list|inspect|install|verify|update|uninstall>
   universal-mcp-installer --ui                       Launch the web dashboard
 
 Install Options:
@@ -203,6 +209,54 @@ async function runValidate(args: string[]) {
   cliPrint(`\nValidating: ${command} ${cmdArgs.join(' ')}`);
   const result = await validateMcpServer(command, cmdArgs, undefined, 'Manual Test');
   cliPrint(JSON.stringify(result, null, 2));
+}
+
+async function runPlugin(args: string[]) {
+  const action = args[0];
+  const marketplace = parseFlag(args, '--marketplace');
+  const { installPlugin, inspectPlugin, listPlugins, uninstallPlugin, updatePlugin, verifyPlugin } = await import('./plugins/installer.js');
+  if (action === 'list') {
+    if (!marketplace) {
+      cliPrint('Error: --marketplace is required');
+      process.exit(1);
+    }
+    const rows = await listPlugins(marketplace, parseFlag(args, '--query') ?? '');
+    for (const row of rows) cliPrint(`${row.name}\t${row.source}`);
+    return;
+  }
+  const name = args[1];
+  if (!name) {
+    cliPrint('Error: plugin name required');
+    process.exit(1);
+  }
+  const options = {
+    marketplacePath: marketplace ?? '',
+    cursorVersion: parseFlag(args, '--cursor-version') ?? '9.9.9',
+    approveHooks: args.includes('--approve-hooks'),
+    approveRemote: args.includes('--approve-remote'),
+    writeMcp: args.includes('--write-mcp'),
+    dryRun: args.includes('--dry-run'),
+  };
+  if (action === 'verify') {
+    const result = await verifyPlugin(name);
+    cliPrint(JSON.stringify(result));
+    process.exit(result.ok ? 0 : 1);
+  }
+  if (action === 'uninstall') {
+    cliPrint(JSON.stringify(await uninstallPlugin(name)));
+    return;
+  }
+  if (!marketplace) {
+    cliPrint('Error: --marketplace is required');
+    process.exit(1);
+  }
+  const result = action === 'inspect'
+    ? await inspectPlugin(name, options)
+    : action === 'update'
+      ? await updatePlugin(name, options)
+      : await installPlugin(name, options);
+  cliPrint(JSON.stringify({ ok: result.ok, stages: result.stages, blockers: result.plan?.blockers ?? [] }, null, 2));
+  if (!result.ok) process.exit(1);
 }
 
 async function launchDashboard(args: string[]) {

@@ -1,0 +1,9 @@
+{
+  "name": "skills-only",
+  "displayName": "Skills Only",
+  "description": "A skills-only Cursor plugin fixture",
+  "version": "1.0.0",
+  "author": { "name": "Fixture" },
+  "license": "MIT",
+  "skills": "./skills"
+}

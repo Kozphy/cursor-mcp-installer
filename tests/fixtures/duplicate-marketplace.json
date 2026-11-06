@@ -1,0 +1,7 @@
+{
+  "name": "dup",
+  "plugins": [
+    { "name": "skills-only", "source": "." },
+    { "name": "skills-only", "source": "." }
+  ]
+}

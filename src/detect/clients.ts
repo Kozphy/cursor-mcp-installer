@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { log } from '../utils/logging.js';
 import { readJsonFile } from '../utils/config-io.js';
 
@@ -42,6 +43,10 @@ function getOpenClawConfigPath(): string {
 }
 
 function getClaudeCodeConfigPath(): string {
+  const configDir = process.env.CLAUDE_CONFIG_DIR?.trim();
+  if (configDir) {
+    return path.join(configDir, '.claude.json');
+  }
   return path.join(os.homedir(), '.claude.json');
 }
 
@@ -125,7 +130,10 @@ export function detectClients(): ClientDetection[] {
   results.push({
     name: 'Claude Code',
     id: 'claude-code',
-    installed: fs.existsSync(claudeCode) || isClaudeCodeAvailable(),
+    installed:
+      fs.existsSync(claudeCode) ||
+      fs.existsSync(path.join(os.homedir(), '.claude')) ||
+      isClaudeCodeAvailable(),
     configPath: claudeCode,
     configExists: fs.existsSync(claudeCode),
     existingServers: getClaudeCodeServers(claudeCode),
@@ -151,8 +159,11 @@ export function detectClients(): ClientDetection[] {
 
 function isClaudeCodeAvailable(): boolean {
   try {
-    const { execFileSync } = require('node:child_process');
-    execFileSync('claude', ['--version'], { timeout: 3000, stdio: 'pipe' });
+    if (process.platform === 'win32') {
+      execFileSync('where.exe', ['claude'], { timeout: 3000, stdio: 'pipe', shell: false });
+      return true;
+    }
+    execFileSync('claude', ['--version'], { timeout: 3000, stdio: 'pipe', shell: false });
     return true;
   } catch {
     return false;
@@ -163,14 +174,22 @@ function getClaudeCodeServers(configPath: string): string[] {
   try {
     const config = readJsonFile(configPath);
     if (!config) return [];
-    const projects = config['projects'] as Record<string, unknown> | undefined;
-    if (!projects) return [];
     const allServers: string[] = [];
-    for (const proj of Object.values(projects)) {
-      const p = proj as Record<string, unknown>;
-      const servers = p['mcpServers'] as Record<string, unknown> | undefined;
-      if (servers) allServers.push(...Object.keys(servers));
+
+    // User-scope servers
+    const userServers = config['mcpServers'] as Record<string, unknown> | undefined;
+    if (userServers) allServers.push(...Object.keys(userServers));
+
+    // Local-scope servers (per project path)
+    const projects = config['projects'] as Record<string, unknown> | undefined;
+    if (projects) {
+      for (const proj of Object.values(projects)) {
+        const p = proj as Record<string, unknown>;
+        const servers = p['mcpServers'] as Record<string, unknown> | undefined;
+        if (servers) allServers.push(...Object.keys(servers));
+      }
     }
+
     return [...new Set(allServers)];
   } catch {
     return [];

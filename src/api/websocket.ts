@@ -1,7 +1,10 @@
 import * as http from 'node:http';
 import * as crypto from 'node:crypto';
 import { log } from '../utils/logging.js';
+import { hostAllowed, tokenAuthorized } from './guard.js';
+import { redactSecrets } from '../security/secret-redaction.js';
 import type { Duplex } from 'node:stream';
+import type { IncomingMessage } from 'node:http';
 
 interface WsClient {
   socket: Duplex;
@@ -11,8 +14,16 @@ interface WsClient {
 export class WebSocketManager {
   private clients: WsClient[] = [];
 
-  handleUpgrade(req: http.IncomingMessage, socket: Duplex, head: Buffer): void {
-    if (req.url !== '/ws') {
+  constructor(private readonly sessionToken: string, private readonly binding: { port: number }) {}
+
+  handleUpgrade(req: http.IncomingMessage, socket: Duplex, _head: Buffer): void {
+    const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+    if (url.pathname !== '/ws' || !hostAllowed(req.headers.host, this.binding.port)) {
+      socket.destroy();
+      return;
+    }
+    const fake = { headers: { ...req.headers, 'x-installer-token': url.searchParams.get('token') ?? '' } } as unknown as IncomingMessage;
+    if (!tokenAuthorized(fake, this.sessionToken)) {
       socket.destroy();
       return;
     }
@@ -55,7 +66,7 @@ export class WebSocketManager {
   }
 
   broadcast(data: unknown): void {
-    const payload = JSON.stringify(data);
+    const payload = JSON.stringify(redactSecrets(data));
     const frame = this.encodeFrame(payload);
 
     for (const client of this.clients) {

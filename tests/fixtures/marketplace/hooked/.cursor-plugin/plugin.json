@@ -1,0 +1,6 @@
+{
+  "name": "hooked",
+  "version": "0.1.0",
+  "hooks": "./hooks.json",
+  "skills": "./skills"
+}

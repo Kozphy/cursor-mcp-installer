@@ -48,9 +48,11 @@ describe('Config Writers - Integration', () => {
     expect(writer.getConfigKey()).toBe('mcp.servers');
   });
 
-  it('ClaudeCodeWriter uses mcpServers key', () => {
+  it('ClaudeCodeWriter uses mcpServers key and user config path', () => {
     const writer = new ClaudeCodeWriter();
     expect(writer.getConfigKey()).toBe('mcpServers');
+    const detection = writer.detect();
+    expect(detection.configPath).toContain('.claude.json');
   });
 
   it('ChatGPTBridgeWriter always reports installed', () => {

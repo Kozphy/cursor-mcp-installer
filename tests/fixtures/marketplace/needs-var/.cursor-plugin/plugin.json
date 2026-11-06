@@ -1,0 +1,10 @@
+{
+  "name": "needs-var",
+  "version": "1.0.0",
+  "skills": "./skills",
+  "variables": {
+    "type": "object",
+    "properties": { "workspace": { "type": "string" } },
+    "required": ["workspace"]
+  }
+}

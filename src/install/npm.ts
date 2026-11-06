@@ -1,14 +1,11 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { McpServerEntry } from '../clients/types.js';
 import { createError } from '../utils/errors.js';
 import { log } from '../utils/logging.js';
-
-const execFileAsync = promisify(execFile);
+import { execNoShell } from '../security/process.js';
 
 export async function isNpmPackage(name: string): Promise<boolean> {
   try {
-    await execFileAsync('npm', ['view', name, 'version'], { timeout: 15000, shell: true });
+    await execNoShell('npm', ['view', name, 'version'], { timeout: 15000 });
     return true;
   } catch {
     return false;

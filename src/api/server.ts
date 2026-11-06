@@ -4,23 +4,28 @@ import * as path from 'node:path';
 import { log, cliPrint } from '../utils/logging.js';
 import { handleApiRequest } from './routes.js';
 import { WebSocketManager } from './websocket.js';
+import { createDashboardSession, hostAllowed, originAllowed, type DashboardSession } from './guard.js';
 
-export async function startApiServer(port: number = 3939): Promise<void> {
-  const wsManager = new WebSocketManager();
+export async function startApiServer(port: number = 3939, session?: DashboardSession, openBrowser = true): Promise<http.Server> {
+  const activeSession = session ?? createDashboardSession();
+  const binding = { port };
+  const wsManager = new WebSocketManager(activeSession.token, binding);
 
   const server = http.createServer(async (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (!hostAllowed(req.headers.host, binding.port) || !originAllowed(req.headers.origin, binding.port)) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'forbidden host or origin' }));
+      return;
+    }
 
     if (req.method === 'OPTIONS') {
-      res.writeHead(204);
+      res.writeHead(403);
       res.end();
       return;
     }
 
     if (req.url?.startsWith('/api/')) {
-      await handleApiRequest(req, res, wsManager);
+      await handleApiRequest(req, res, wsManager, activeSession);
       return;
     }
 
@@ -37,19 +42,31 @@ export async function startApiServer(port: number = 3939): Promise<void> {
     wsManager.handleUpgrade(req, socket, head);
   });
 
-  server.listen(port, () => {
-    cliPrint(`Dashboard: http://localhost:${port}`);
-    cliPrint(`API:       http://localhost:${port}/api/system`);
-    cliPrint('Press Ctrl+C to stop.\n');
-
-    tryOpenBrowser(`http://localhost:${port}`);
+  await new Promise<void>((resolve) => {
+    server.listen(port, '127.0.0.1', () => {
+      const address = server.address();
+      if (address && typeof address === 'object') binding.port = address.port;
+      resolve();
+    });
   });
+  cliPrint(`Dashboard: http://127.0.0.1:${binding.port}`);
+  cliPrint(`API:       http://127.0.0.1:${binding.port}/api/system`);
+  cliPrint(`Session token file: ${activeSession.tokenPath}`);
+  cliPrint('Press Ctrl+C to stop.\n');
+  if (openBrowser) tryOpenBrowser(`http://127.0.0.1:${binding.port}`);
+  return server;
 }
 
 function serveDashboard(req: http.IncomingMessage, res: http.ServerResponse, dashboardDir: string): void {
-  let filePath = path.join(dashboardDir, req.url === '/' ? 'index.html' : req.url!);
-  if (!fs.existsSync(filePath)) {
-    filePath = path.join(dashboardDir, 'index.html');
+  const requested = (req.url ?? '/').split('?')[0];
+  const relative = requested === '/' ? 'index.html' : requested.replace(/^\/+/, '');
+  const filePath = path.resolve(dashboardDir, relative);
+  const root = path.resolve(dashboardDir);
+  const fromRoot = path.relative(root, filePath);
+  if (fromRoot.startsWith('..') || path.isAbsolute(fromRoot) || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+    res.writeHead(404);
+    res.end('Not found');
+    return;
   }
 
   const ext = path.extname(filePath);
@@ -157,9 +174,10 @@ function serveFallbackPage(req: http.IncomingMessage, res: http.ServerResponse, 
 }
 
 function tryOpenBrowser(url: string): void {
-  import('node:child_process').then(({ exec }) => {
-    const cmd = process.platform === 'darwin' ? 'open' :
-      process.platform === 'win32' ? 'start' : 'xdg-open';
-    exec(`${cmd} ${url}`, () => { /* ignore errors */ });
+  if (!url.startsWith('http://127.0.0.1:')) return;
+  import('node:child_process').then(({ spawn }) => {
+    if (process.platform === 'darwin') spawn('open', [url], { shell: false });
+    else if (process.platform === 'win32') spawn('cmd.exe', ['/d', '/s', '/c', 'start', '', url], { shell: false, windowsHide: true });
+    else spawn('xdg-open', [url], { shell: false });
   }).catch(() => { /* ignore */ });
 }

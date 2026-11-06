@@ -1,0 +1,7 @@
+{
+  "name": "mcp-demo",
+  "version": "1.2.0",
+  "mcpServers": {
+    "demo": { "command": "node", "args": ["server.js"] }
+  }
+}

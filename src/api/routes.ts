@@ -16,7 +16,10 @@ import { validateMcpServer } from '../validate/handshake.js';
 import { generateReport } from '../validate/health-report.js';
 import { WebSocketManager } from './websocket.js';
 import { ClientWriter, McpServerEntry } from '../clients/types.js';
+import { z } from 'zod';
 import { log } from '../utils/logging.js';
+import { MAX_BODY_BYTES, tokenAuthorized, type DashboardSession } from './guard.js';
+import { assertSafeArg, assertSafeExecutable } from '../security/process.js';
 
 const allWriters: ClientWriter[] = [
   new CursorWriter(),
@@ -32,11 +35,34 @@ function jsonResponse(res: http.ServerResponse, data: unknown, status = 200): vo
   res.end(JSON.stringify(data));
 }
 
+const installBody = z.object({
+  package: z.string().min(1).max(500),
+  method: z.enum(['auto', 'npm', 'uvx', 'git', 'local']).optional(),
+  clients: z.array(z.string().max(64)).max(20).optional(),
+  env: z.record(z.string().max(200), z.string().max(2000)).optional(),
+  args: z.array(z.string().max(500)).max(50).optional(),
+});
+
+const validateBody = z.object({
+  command: z.string().min(1).max(200),
+  args: z.array(z.string().max(500)).max(50).optional(),
+  env: z.record(z.string().max(200), z.string().max(2000)).optional(),
+});
+
 async function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
-    let body = '';
-    req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
-    req.on('end', () => resolve(body));
+    let size = 0;
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > MAX_BODY_BYTES) {
+        reject(new Error('request body too large'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
 }
@@ -45,10 +71,15 @@ export async function handleApiRequest(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   ws: WebSocketManager,
+  session: DashboardSession,
 ): Promise<void> {
   const url = req.url ?? '';
 
   try {
+    if (req.method === 'POST' && !tokenAuthorized(req, session.token)) {
+      jsonResponse(res, { error: 'unauthorized' }, 401);
+      return;
+    }
     if (url === '/api/system' && req.method === 'GET') {
       const osInfo = detectOs();
       const runtimes = await detectRuntimes();
@@ -64,12 +95,19 @@ export async function handleApiRequest(
     }
 
     if (url === '/api/install' && req.method === 'POST') {
-      const body = JSON.parse(await readBody(req));
-      const pkgName = body.package as string;
-      const method = (body.method as string) ?? 'auto';
-      const clientIds = (body.clients as string[]) ?? [];
-      const envEntries = (body.env as Record<string, string>) ?? {};
-      const serverArgs = (body.args as string[]) ?? [];
+      const parsed = installBody.safeParse(JSON.parse(await readBody(req)));
+      if (!parsed.success) {
+        jsonResponse(res, { error: 'invalid install request' }, 400);
+        return;
+      }
+      const body = parsed.data;
+      const pkgName = body.package;
+      const method = body.method ?? 'auto';
+      const clientIds = body.clients ?? [];
+      const envEntries = body.env ?? {};
+      const serverArgs = body.args ?? [];
+      assertSafeArg(pkgName);
+      for (const arg of serverArgs) assertSafeArg(arg);
 
       ws.broadcast({ type: 'install_step', data: { step: 'Resolving package', status: 'running' } });
 
@@ -137,10 +175,16 @@ export async function handleApiRequest(
     }
 
     if (url === '/api/validate' && req.method === 'POST') {
-      const body = JSON.parse(await readBody(req));
-      const command = body.command as string;
-      const args = (body.args as string[]) ?? [];
-      const env = (body.env as Record<string, string>) ?? {};
+      const parsed = validateBody.safeParse(JSON.parse(await readBody(req)));
+      if (!parsed.success) {
+        jsonResponse(res, { error: 'invalid validate request' }, 400);
+        return;
+      }
+      const command = parsed.data.command;
+      const args = parsed.data.args ?? [];
+      const env = parsed.data.env ?? {};
+      assertSafeExecutable(command);
+      for (const arg of args) assertSafeArg(arg);
 
       const result = await validateMcpServer(command, args, env, 'API Test');
       jsonResponse(res, result);

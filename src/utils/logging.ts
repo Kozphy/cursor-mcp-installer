@@ -1,3 +1,5 @@
+import { redactSecrets } from '../security/secret-redaction.js';
+
 const isStdioMode = process.argv.includes('--stdio') || process.argv[1]?.endsWith('index.js');
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -17,7 +19,7 @@ function formatMessage(level: LogLevel, message: string, context?: Record<string
   const timestamp = new Date().toISOString();
   const base = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
   if (context && Object.keys(context).length > 0) {
-    return `${base} ${JSON.stringify(context)}`;
+    return `${base} ${JSON.stringify(redactSecrets(context))}`;
   }
   return base;
 }

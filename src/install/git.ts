@@ -1,34 +1,47 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { McpServerEntry } from '../clients/types.js';
 import { createError } from '../utils/errors.js';
 import { log } from '../utils/logging.js';
+import { execNoShell } from '../security/process.js';
+import { parsePinnedGitUrl } from '../security/path-safety.js';
 
-const execFileAsync = promisify(execFile);
+export async function installRepoDependencies(tempDir: string, allowScripts = false): Promise<void> {
+  if (!fs.existsSync(path.join(tempDir, 'package.json'))) return;
+  const npmArgs = allowScripts
+    ? ['install', '--omit=dev']
+    : ['install', '--omit=dev', '--ignore-scripts'];
+  log.info('Installing repository dependencies', { scripts: allowScripts });
+  await execNoShell('npm', npmArgs, { cwd: tempDir, timeout: 120000 });
+}
 
 export function isGitUrl(name: string): boolean {
   return name.endsWith('.git') || name.includes('github.com') || name.includes('gitlab.com') || name.includes('bitbucket.org');
 }
 
-export async function resolveGitRepo(url: string, args?: string[], env?: Record<string, string>): Promise<{ entry: McpServerEntry; name: string }> {
-  const repoName = url.split('/').pop()?.replace('.git', '') ?? 'mcp-repo';
+export async function resolveGitRepo(
+  url: string,
+  args?: string[],
+  env?: Record<string, string>,
+  options: { allowScripts?: boolean } = {},
+): Promise<{ entry: McpServerEntry; name: string }> {
+  const pinned = parsePinnedGitUrl(url);
+  const repoName = pinned.cloneUrl.split('/').pop()?.replace('.git', '') ?? 'mcp-repo';
   const tempDir = path.join(os.tmpdir(), `mcp-${repoName}-${Date.now()}`);
 
   try {
     fs.mkdirSync(tempDir, { recursive: true });
-    log.info(`Cloning ${url} to ${tempDir}`);
-    await execFileAsync('git', ['clone', '--depth', '1', url, tempDir], { timeout: 60000 });
+    log.info('Cloning pinned repository', { host: new URL(pinned.cloneUrl).host });
+    await execNoShell('git', ['init', tempDir], { timeout: 15000 });
+    await execNoShell('git', ['remote', 'add', 'origin', pinned.cloneUrl], { cwd: tempDir, timeout: 15000 });
+    await execNoShell('git', ['fetch', '--depth', '1', 'origin', pinned.commit], { cwd: tempDir, timeout: 60000 });
+    await execNoShell('git', ['checkout', '--detach', 'FETCH_HEAD'], { cwd: tempDir, timeout: 15000 });
   } catch (err) {
     throw createError('GIT_CLONE_FAILED', err instanceof Error ? err.message : String(err));
   }
 
-  if (fs.existsSync(path.join(tempDir, 'package.json'))) {
-    log.info('Found package.json, running npm install');
-    await execFileAsync('npm', ['install', '--production'], { cwd: tempDir, timeout: 120000 });
-  }
+  await installRepoDependencies(tempDir, options.allowScripts === true);
 
   const entryFile = ['index.mjs', 'index.js', 'src/index.mjs', 'src/index.js', 'dist/index.js']
     .find(f => fs.existsSync(path.join(tempDir, f)));

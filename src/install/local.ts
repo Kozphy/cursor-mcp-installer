@@ -1,12 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { McpServerEntry } from '../clients/types.js';
 import { createError } from '../utils/errors.js';
 import { log } from '../utils/logging.js';
-
-const execFileAsync = promisify(execFile);
+import { execNoShell } from '../security/process.js';
 
 export async function resolveLocalPath(
   dirPath: string,
@@ -22,7 +19,7 @@ export async function resolveLocalPath(
   const pkgPath = path.join(dirPath, 'package.json');
   if (fs.existsSync(pkgPath)) {
     log.info('Found package.json, installing dependencies');
-    await execFileAsync('npm', ['install', '--production'], { cwd: dirPath, timeout: 120000 });
+    await execNoShell('npm', ['install', '--omit=dev', '--ignore-scripts'], { cwd: dirPath, timeout: 120000 });
 
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
 
