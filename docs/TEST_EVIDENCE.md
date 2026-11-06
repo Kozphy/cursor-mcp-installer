@@ -4,6 +4,8 @@
 **When:** 2026-11-06 on Windows  
 **Result:** 7 files passed, **55 passed, 6 skipped**, exit code 0.
 
+GitHub Actions push run `42212102145` then failed Windows on a temp path containing `~` (`RUNNER~1`). Argument policy was updated to allow `~` in non-shell argv. Re-run is required before treating Windows CI as green.
+
 Skipped tests call the npm registry or `npx` and run only when `RUN_NETWORK_TESTS=1`. They were not executed in this session.
 
 **Command:** `npx tsc --noEmit`  

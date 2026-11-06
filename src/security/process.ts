@@ -2,7 +2,7 @@ import { execFileSync, spawn, type ChildProcess, type SpawnOptions } from 'node:
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 const SHELL_META = /[\0\r\n|&;<>^`$]/;
-const SAFE_BODY = /^[A-Za-z0-9._@+:/=#?,'"()[\]\\-]+$/;
+const SAFE_BODY = /^[A-Za-z0-9._@+:/=#?,'"()[\]\\~-]+$/;
 const WINDOWS_SHIMS = new Set(['uvx', 'claude', 'python', 'python3', 'py']);
 const DENIED_EXECUTABLES = new Set(['cmd', 'cmd.exe', 'powershell', 'powershell.exe', 'pwsh', 'pwsh.exe', 'bash', 'sh', 'wscript', 'cscript']);
 
